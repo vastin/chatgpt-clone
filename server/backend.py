@@ -80,20 +80,23 @@ class Backend_Api:
 
             def stream():
                 for chunk in gpt_resp.iter_lines():
-                    try:
-                        decoded_line = loads(chunk.decode("utf-8").split("data: ")[1])
-                        token = decoded_line["choices"][0]['delta'].get('content')
+                    if chunk and chunk != b'data: [DONE]':
+                        try:
+                            decoded_line = loads(chunk.decode("utf-8").split("data: ")[1])
+                            delta = decoded_line["choices"][0]['delta']
+                            if delta:
+                                token = delta.get('content')
+                            else:
+                                token = None
+                            if token != None:
+                                yield token
+                        except GeneratorExit:
+                            break
 
-                        if token != None: 
-                            yield token
-                            
-                    except GeneratorExit:
-                        break
-
-                    except Exception as e:
-                        print(e)
-                        print(e.__traceback__.tb_next)
-                        continue
+                        except Exception as e:
+                            print(e)
+                            print(e.__traceback__.tb_next)
+                            continue
                         
             return self.app.response_class(stream(), mimetype='text/event-stream')
 
